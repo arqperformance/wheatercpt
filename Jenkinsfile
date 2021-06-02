@@ -1,4 +1,4 @@
-                                  //Ejecucion Local
+//Ejecucion Local
 import java.text.SimpleDateFormat
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
@@ -7,43 +7,43 @@ def date = new Date()
 def timestamp = dateFormat.format(date).toString()
 pipeline
 {
-	options {
+    options {
       timeout(time: 1, unit: 'HOURS') 
     }
-	agent any
+    agent any
 
-	stages {
-		stage('Actualizar fuentes') {
-			steps {
-				echo 'Actualizar fuentes'
-				checkout([$class: 'GitSCM', branches: [[name: "master"]], 
+    stages {
+        stage('Actualizar fuentes') {
+            steps {
+                echo 'Actualizar fuentes'
+                checkout([$class: 'GitSCM', branches: [[name: "master"]], 
                 doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [
                 [credentialsId: "arqperformance", url: "https://github.com/arqperformance/wheatercpt.git"]
                 ]])
-			}
-		}		
-		stage('Ejecutar prueba Baseline Orange') {
-            steps {
-				script {
-					try{
-						echo 'Performance Guardar Build And JobName'					 
-						bat "C:\\apache-jmeter-5.3\\bin\\jmeter -n -t -JJOB_NAME=Baseline_${env.BUILD_NUMBER}"
-						echo "Ejecutar Performance Test"
-						bat "bzt $WORKSPACE\\clima_cpt.yml $WORKSPACE\\passfail_config.yml"
-						perfReport './clima_cpt.xml'						
-					} 
-					catch(ex)
-                    {						
-						echo 'Finalizo ejecucion con fallos'
-						bat "neoload.exe -project Error.npl"
-                    }
-				}	
             }
         }
-	}
-	post {		
+        stage('Ejecutar prueba Baseline Orange') {
+            steps {
+                script {
+                    try{
+                        echo 'Performance Guardar Build And JobName' 
+                        bat "C:\\apache-jmeter-5.3\\bin\\jmeter -n -t -JJOB_NAME=Baseline_${env.BUILD_NUMBER}"
+                        echo "Ejecutar Performance Test"
+                        bat "bzt $WORKSPACE\\clima_cpt.yml $WORKSPACE\\passfail_config.yml"
+                        perfReport './clima_cpt.xml'
+                    } 
+                    catch(ex)
+                    {
+                        echo 'Finalizo ejecucion con fallos'
+                        bat "neoload.exe -project Error.npl"
+                    }
+                }
+            }
+        }
+    }
+    post {
         success {  
-        	enviarCorreo("SUCCESS")
+            enviarCorreo("SUCCESS")
         }  
         failure {  
             enviarCorreo("FAILURE")
@@ -58,342 +58,338 @@ def enviarCorreo(resultadoTest) {
     def hero = ""
     def nombreProyecto = "Baseline Orange"
     def currentTime = new Date(currentBuild.timeInMillis)    
-	def currentTimeFinal = new Date(currentBuild.timeInMillis + TimeUnit.MINUTES.toMillis(10))
+    def currentTimeFinal = new Date(currentBuild.timeInMillis + TimeUnit.MINUTES.toMillis(10))
     def formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss")
-	def formatoTimeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    def formatoTimeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     def timeInicioPruebas = formato.format(currentTime)
-	def	TimestampInicioPruebas = formatoTimeStamp.format(currentTime)
-	def	TimestampFinalPruebas = formatoTimeStamp.format(currentTimeFinal)
-	def tsInicial = Timestamp.valueOf(TimestampInicioPruebas)
-	def tsFinal = Timestamp.valueOf(TimestampFinalPruebas)
-	def TimestampInicial = tsInicial.getTime()
-	def TimestampFinal = tsFinal.getTime()
+    def	TimestampInicioPruebas = formatoTimeStamp.format(currentTime)
+    def	TimestampFinalPruebas = formatoTimeStamp.format(currentTimeFinal)
+    def tsInicial = Timestamp.valueOf(TimestampInicioPruebas)
+    def tsFinal = Timestamp.valueOf(TimestampFinalPruebas)
+    def TimestampInicial = tsInicial.getTime()
+    def TimestampFinal = tsFinal.getTime()
     def urlEvidencia = "http://10.2.101.195:3000/d/2s28c0KMk/kpis?orgId=1&from=${TimestampInicial}&to=${TimestampFinal}"
-	def NOMBRE_TRANSACCION = "Demostracion CPT" //Nombre del proyecto para asunto del correo
-	def NOMBRE_PROYECTO_GIT = "democpt" //Nombre del proyecto en GIT
-	
-	if (resultadoTest == "SUCCESS") {
-		asunto = "CPT - EJECUCION EXITOSA ESCENARIO - TRANSACCION ${NOMBRE_TRANSACCION}"
-		resultado = """<b class="execTitle" style="color:#032d9f;border:3px solid ;border-radius: 9px; padding:0px 12px 0 12px;">EJECUCION EXITOSA</b>"""
-		hero = "Todo va bien en la transacci&oacute;n. Para m&aacute;s detalles remitase a los enlaces en la parte inferior de este correo."
-	} else {
-		asunto = "CPT - EJECUCION FALLIDA ESCENARIO - TRANSACCION ${NOMBRE_TRANSACCION}"
-		resultado = """<b class="execTitle" style="color:#c90000;border:3px solid #c90000;border-radius: 9px; padding:0px 12px 0 12px;">EJECUCION FALLIDA</b>"""
-		hero = "Se ha encontrado un error en la transacci&oacute;n. Para m&aacute;s detalles remitase a los enlaces en la parte inferior de este correo."
-	}
+    def NOMBRE_TRANSACCION = "Demostracion CPT" //Nombre del proyecto para asunto del correo
+    def NOMBRE_PROYECTO_GIT = "democpt" //Nombre del proyecto en GIT
 
-	def body = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-		<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-			<head>
-				<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-				<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-				<meta name="format-detection" content="date=no" />
-				<meta name="format-detection" content="address=no" />
-				<meta name="format-detection" content="telephone=no" />
-				<meta name="x-apple-disable-message-reformatting" />
-				<link href="https://fonts.googleapis.com/css?family=Poppins:400,400i,700,700i" rel="stylesheet" />
+    if (resultadoTest == "SUCCESS") {
+        asunto = "CPT - EJECUCION EXITOSA ESCENARIO - TRANSACCION ${NOMBRE_TRANSACCION}"
+        resultado = """<b class="execTitle" style="color:#032d9f;border:3px solid ;border-radius: 9px; padding:0px 12px 0 12px;">EJECUCION EXITOSA</b>"""
+        hero = "Todo va bien en la transacci&oacute;n. Para m&aacute;s detalles remitase a los enlaces en la parte inferior de este correo."
+    } else {
+        asunto = "CPT - EJECUCION FALLIDA ESCENARIO - TRANSACCION ${NOMBRE_TRANSACCION}"
+        resultado = """<b class="execTitle" style="color:#c90000;border:3px solid #c90000;border-radius: 9px; padding:0px 12px 0 12px;">EJECUCION FALLIDA</b>"""
+        hero = "Se ha encontrado un error en la transacci&oacute;n. Para m&aacute;s detalles remitase a los enlaces en la parte inferior de este correo."
+    }
 
-				<style type="text/css" media="screen">
-					body { padding:0 !important; margin:0 !important; display:block !important; min-width:100% !important; width:100% !important; background:#FFF; -webkit-text-size-adjust:none }
-					a { color:#66c7ff; text-decoration:none }
-					p { padding:0 !important; margin:0 !important }
-					img { -ms-interpolation-mode: bicubic; }
-					.mcnPreviewText { display: none !important; }
+    def body = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+            <head>
+                <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+                <meta name="format-detection" content="date=no" />
+                <meta name="format-detection" content="address=no" />
+                <meta name="format-detection" content="telephone=no" />
+                <meta name="x-apple-disable-message-reformatting" />
+                <link href="https://fonts.googleapis.com/css?family=Poppins:400,400i,700,700i" rel="stylesheet" />
 
-					@media only screen and (max-device-width: 480px), only screen and (max-width: 480px) {
-						.mobile-shell { width: 100% !important; min-width: 100% !important; }
-						.bg { background-size: 100% auto !important; -webkit-background-size: 100% auto !important; }
-						.text-nav,
-						.text-header,
-						.m-center { text-align: center !important;line-height: 36px;}
-						.execTitle { border: none !important; }
-						.center { margin: 0 auto !important; }
-						.container { padding: 10px 10px 10px 10px !important }
-						.td { width: 100% !important; min-width: 100% !important; }
-						.mbr img { border-radius: 8px !important; }
-						.brl  { border-radius: 10px !important; }
-						.brr  { border-radius: 10px !important; }
-						.text-nav { line-height: 28px !important; }
-						.p30 { padding: 15px !important; }
-						.m-br-15 { height: 15px !important; }
-						.p30-15 { padding: 30px 15px !important; }
-						.p40 { padding: 20px !important; }
-						.m-td,
-						.m-hide { display: none !important; width: 0 !important; height: 0 !important; font-size: 0 !important; line-height: 0 !important; min-height: 0 !important; }
-						.m-block { display: block !important; }
-						.fluid-img img { width: 100% !important; max-width: 100% !important; height: auto !important; }
-						.column,
-						.column-dir,
-						.column-top,
-						.column-empty,
-						.column-empty2,
-						.column-dir-top { float: left !important; width: 100% !important; display: block !important; }
-						.column-empty { padding-bottom: 10px !important; }
-						.column-empty2 { padding-bottom: 20px !important; }
-						.content-spacing { width: 15px !important; }
-					}
-				</style>
-			</head>
-			<body class="body" style="padding:0 !important; margin:0 !important; display:block !important; min-width:100% !important; width:100% !important; background:#FFF; -webkit-text-size-adjust:none;">		
-				<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#e1dad3">
-					<tr>
-						<td align="center" valign="top">
-							<table width="650" border="0" cellspacing="0" cellpadding="0" class="mobile-shell">
-								<tr>
-									<td class="td container" style="width:650px; min-width:650px; font-size:0pt; line-height:0pt; margin:0; font-weight:normal; padding:10px 0px 40px 0px;">								
-										<!-- Titulo -->
-										<table width="100%" border="0" cellspacing="0" cellpadding="0">								
-											<tr>
-												<td style="padding-bottom: 10px;">
-													<table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
-														<tr>													
-															<th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
-																<!-- Footer -->
-																<center>
-																	<table  width="100%" border="0" cellspacing="0" cellpadding="0">											
-																			<tr>
-																				<td class="p30-15 br" style="padding: 10px; border-radius:10px;" bgcolor="#FFF">
-																					<table border="0" cellspacing="0" cellpadding="0">
-																						<tr>
-																							<td class="fluid-img mbr" style="color:#141415; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:15px; text-align:left;">
-																								Powered by:
-																							</td>
-																						</tr>
-																						<tr>
-																							<td class="fluid-img mbr" style="color:#141415; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:15px; text-align:right;">
-																								<b>
-																									Continuous Performance Testing
-																									<br>
-																								</b>				
-																							</td>
-																						</tr>												
-																						<tr>																					
-																							<td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">
-																								<img src="https://camaradelpacifico.org/tl_files/Casos%20Exito/CHOUCAIR%20TESTING/LOGO%20Choucair.jpg" title="source: imgur.com" width="350" height="80" border="0" alt="choucair.logo" style="margin-left: 30%;" />
-																							</td>
-																						</tr>
-																					</table>
-																				</td>
-																			</tr>
-																		</th>
-																	</table>
-																</center>														
-															</th>
-														</tr>
-													</table>
-												</td>
-											</tr>									
-										</table>
-										<!-- End Titulo -->								
-										
-										<!-- Header -->
-										<table width="100%" border="0" cellspacing="0" cellpadding="0">
-											<tr>
-												<td class="p30-15 tbrr" style="padding:10px 10px 10px 40px; border-radius:10px 10px 0px 0px;" bgcolor="#141415">
-													<table width="100%" border="0" cellspacing="0" cellpadding="0">
-														<tr>
-															<th class="column-top" width="100%" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:middle;">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="text-header" style="color:#FFF; font-family:'Segoe UI';letter-spacing:2px; font-size:20px; line-width:36px; text-align:center ;">
-																			${resultado}
-																		</td>
-																	</tr>
-																</table>
-															</th>
-															<th class="column-empty" width="1" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:top;">
-															</th>
-															<th class="column" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal;">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="text-header" style="color:#e1dad3; font-family:'Poppins', Arial,sans-serif; font-size:12px; text-align:center; text-transform:uppercase;">
-																			<a href="#" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;text-align:center;">
-																				<b>
-																					<span class="link-white" style="color:#FFF; text-decoration:none;">
-																						${timeInicioPruebas}
-																					</span>
-																				</b>
-																			</a>
-																		</td>
-																	</tr>
-																</table>
-															</th>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</table>
-										<!-- END Header -->
+                <style type="text/css" media="screen">
+                    body { padding:0 !important; margin:0 !important; display:block !important; min-width:100% !important; width:100% !important; background:#FFF; -webkit-text-size-adjust:none }
+                    a { color:#66c7ff; text-decoration:none }
+                    p { padding:0 !important; margin:0 !important }
+                    img { -ms-interpolation-mode: bicubic; }
+                    .mcnPreviewText { display: none !important; }
 
-										<!-- Logo + Resultado ejecución -->
-										<table width="100%" border="0" cellspacing="0" cellpadding="0">
-											<tr>
-												<td class="p30-15" style="padding: 25px 30px;" bgcolor="#101010" align="center">
-													<table width="100%" border="0" cellspacing="0" cellpadding="0">
-														<tr>
-															<th class="column-dir" dir="ltr" width="145">													
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="img m-center" style="font-size:0pt; line-height:0pt; text-align:left;">
-																			<!--Logo Amarillo-->
-																			<!-- img src="https://www.fecc.online/images/CONVENIOS/exito.jpg" width="116" height="70" border="0" alt="" / -->																	
-																		</td>
-																	</tr>
-																</table>
-															</th>
-															<th class="column-empty" width="1" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:top;">
-															</th>
-															<th class="column" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal;max-width:350px">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="text-nav" style="line-height:18px; text-align:center; text-transform:uppercase;">
-																			<span style="color:#FFF; font-family:'Segoe UI';letter-spacing:2px; font-size:12px; word-wrap: break-word;">
-																				<b>
-																					TRANSACCION:
-																					<br>${NOMBRE_TRANSACCION}
-																					<br>
-																					<br>
-																				</b>
-																			</span>
-																		</td>
-																	</tr>														
-																	<tr>
-																		<td class="h2 pb15" style="color:#FFF; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:20px; text-align:left; padding-bottom:15px;max-width: 500px;word-break: break-all;">
-																			<b>Job:</b> '
-																			${env.JOB_NAME} [${env.BUILD_NUMBER}]'
-																		</td>
-																	</tr>
-																	<tr>
-																		<td class="text" style="color:#FFF; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:10px; text-align:left;">
-																			${hero}
-																		</td>
-																	</tr>
-																</table>
-															</th>
-														</tr>
-													</table>
-												</td>										
-											</tr>									
-										</table>
-										<!-- END Logo + Resultado ejecución -->
-										
-										<!-- Grafana -->
-										<table width="100%" border="0" cellspacing="0" cellpadding="0">
-											<tr>
-												<td style="padding-bottom: 10px;">
-													<table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
-														<tr>
-															<th class="column-dir" dir="ltr" width="245" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;background:#ffffff;border-radius:0px 10px 10px 0px">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<!-- Button -->
-																	<tr>
-																		<td align="center">
-																			<table border="0" cellspacing="0" cellpadding="0">
-																				<tr>
-																					<td class="text-button" style="background:#ded7d7; color:#ffffff; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:18px; padding:12px 30px; text-align:center; border-radius:22px;">
-																						<a href="${urlEvidencia}" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;">
-																							<span class="link-white" style="color:#080808; text-decoration:none;">
-																								<b>Ir al Tablero</b>
-																							</span>
-																						</a>
-																					</td>
-																				</tr>
-																			</table>
-																		</td>
-																	</tr>
-																	<!-- END Button -->
-																</table>
-															</th>
-															<th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="p30-15 brl" style="padding: 20px; border-radius:10px 0px 0px 10px;" bgcolor="#ffffff" height="30">
-																			<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																				<tr>
-																					<td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">																	
-																						<img src="https://miro.medium.com/max/480/1*UqgMgl_BvAyJvNb9eTy4Wg.png" title="source: medium.com" width="100" height="70" border="0" alt="grafana.logo" />
-																					</td>
-																					<td class="h3 pb20" style="color:#445942; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:24px; text-align:center; padding-bottom:5px;">
-																						Conozca los resultados de la prueba en el dashboard de Rendimiento.
-																					</td>
-																				</tr>																		
-																			</table>
-																		</td>
-																	</tr>
-																</table>
-															</th>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</table>
-										<!-- Grafana -->
+                    @media only screen and (max-device-width: 480px), only screen and (max-width: 480px) {
+                        .mobile-shell { width: 100% !important; min-width: 100% !important; }
+                        .bg { background-size: 100% auto !important; -webkit-background-size: 100% auto !important; }
+                        .text-nav,
+                        .text-header,
+                        .m-center { text-align: center !important;line-height: 36px;}
+                        .execTitle { border: none !important; }
+                        .center { margin: 0 auto !important; }
+                        .container { padding: 10px 10px 10px 10px !important }
+                        .td { width: 100% !important; min-width: 100% !important; }
+                        .mbr img { border-radius: 8px !important; }
+                        .brl  { border-radius: 10px !important; }
+                        .brr  { border-radius: 10px !important; }
+                        .text-nav { line-height: 28px !important; }
+                        .p30 { padding: 15px !important; }
+                        .m-br-15 { height: 15px !important; }
+                        .p30-15 { padding: 30px 15px !important; }
+                        .p40 { padding: 20px !important; }
+                        .m-td,
+                        .m-hide { display: none !important; width: 0 !important; height: 0 !important; font-size: 0 !important; line-height: 0 !important; min-height: 0 !important; }
+                        .m-block { display: block !important; }
+                        .fluid-img img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+                        .column,
+                        .column-dir,
+                        .column-top,
+                        .column-empty,
+                        .column-empty2,
+                        .column-dir-top { float: left !important; width: 100% !important; display: block !important; }
+                        .column-empty { padding-bottom: 10px !important; }
+                        .column-empty2 { padding-bottom: 20px !important; }
+                        .content-spacing { width: 15px !important; }
+                    }
+                </style>
+            </head>
+            <body class="body" style="padding:0 !important; margin:0 !important; display:block !important; min-width:100% !important; width:100% !important; background:#FFF; -webkit-text-size-adjust:none;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#e1dad3">
+                    <tr>
+                        <td align="center" valign="top">
+                            <table width="650" border="0" cellspacing="0" cellpadding="0" class="mobile-shell">
+                                <tr>
+                                    <td class="td container" style="width:650px; min-width:650px; font-size:0pt; line-height:0pt; margin:0; font-weight:normal; padding:10px 0px 40px 0px;">
+                                        <!-- Titulo -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td style="padding-bottom: 10px;">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
+                                                        <tr>
+                                                            <th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
+                                                                <!-- Footer -->
+                                                                <center>
+                                                                    <table  width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                            <tr>
+                                                                                <td class="p30-15 br" style="padding: 10px; border-radius:10px;" bgcolor="#FFF">
+                                                                                    <table border="0" cellspacing="0" cellpadding="0">
+                                                                                        <tr>
+                                                                                            <td class="fluid-img mbr" style="color:#141415; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:15px; text-align:left;">
+                                                                                                Powered by:
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                        <tr>
+                                                                                            <td class="fluid-img mbr" style="color:#141415; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:15px; text-align:right;">
+                                                                                                <b>
+                                                                                                    Continuous Performance Testing
+                                                                                                    <br>
+                                                                                                </b>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                        <tr>
+                                                                                            <td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">
+                                                                                                <img src="https://camaradelpacifico.org/tl_files/Casos%20Exito/CHOUCAIR%20TESTING/LOGO%20Choucair.jpg" title="source: imgur.com" width="350" height="80" border="0" alt="choucair.logo" style="margin-left: 30%;" />
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    </table>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </th>
+                                                                    </table>
+                                                                </center>
+                                                            </th>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- End Titulo -->
+                                        <!-- Header -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td class="p30-15 tbrr" style="padding:10px 10px 10px 40px; border-radius:10px 10px 0px 0px;" bgcolor="#141415">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <tr>
+                                                            <th class="column-top" width="100%" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:middle;">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="text-header" style="color:#FFF; font-family:'Segoe UI';letter-spacing:2px; font-size:20px; line-width:36px; text-align:center ;">
+                                                                            ${resultado}
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                            <th class="column-empty" width="1" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:top;">
+                                                            </th>
+                                                            <th class="column" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal;">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="text-header" style="color:#e1dad3; font-family:'Poppins', Arial,sans-serif; font-size:12px; text-align:center; text-transform:uppercase;">
+                                                                            <a href="#" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;text-align:center;">
+                                                                                <b>
+                                                                                    <span class="link-white" style="color:#FFF; text-decoration:none;">
+                                                                                        ${timeInicioPruebas}
+                                                                                    </span>
+                                                                                </b>
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- END Header -->
+                                        <!-- Logo + Resultado ejecución -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td class="p30-15" style="padding: 25px 30px;" bgcolor="#101010" align="center">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                        <tr>
+                                                            <th class="column-dir" dir="ltr" width="145">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="img m-center" style="font-size:0pt; line-height:0pt; text-align:left;">
+                                                                            <!--Logo Amarillo-->
+                                                                            <!-- img src="https://www.fecc.online/images/CONVENIOS/exito.jpg" width="116" height="70" border="0" alt="" / -->
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                            <th class="column-empty" width="1" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; vertical-align:top;">
+                                                            </th>
+                                                            <th class="column" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal;max-width:350px">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="text-nav" style="line-height:18px; text-align:center; text-transform:uppercase;">
+                                                                            <span style="color:#FFF; font-family:'Segoe UI';letter-spacing:2px; font-size:12px; word-wrap: break-word;">
+                                                                                <b>
+                                                                                    TRANSACCION:
+                                                                                    <br>${NOMBRE_TRANSACCION}
+                                                                                    <br>
+                                                                                    <br>
+                                                                                </b>
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="h2 pb15" style="color:#FFF; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:20px; text-align:left; padding-bottom:15px;max-width: 500px;word-break: break-all;">
+                                                                            <b>Job:</b> '
+                                                                            ${env.JOB_NAME} [${env.BUILD_NUMBER}]'
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="text" style="color:#FFF; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:10px; text-align:left;">
+                                                                            ${hero}
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- END Logo + Resultado ejecución -->
+                                        <!-- Grafana -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td style="padding-bottom: 10px;">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
+                                                        <tr>
+                                                            <th class="column-dir" dir="ltr" width="245" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;background:#ffffff;border-radius:0px 10px 10px 0px">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <!-- Button -->
+                                                                    <tr>
+                                                                        <td align="center">
+                                                                            <table border="0" cellspacing="0" cellpadding="0">
+                                                                                <tr>
+                                                                                    <td class="text-button" style="background:#ded7d7; color:#ffffff; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:18px; padding:12px 30px; text-align:center; border-radius:22px;">
+                                                                                        <a href="${urlEvidencia}" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;">
+                                                                                            <span class="link-white" style="color:#080808; text-decoration:none;">
+                                                                                                <b>Ir al Tablero</b>
+                                                                                            </span>
+                                                                                        </a>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <!-- END Button -->
+                                                                </table>
+                                                            </th>
+                                                            <th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="p30-15 brl" style="padding: 20px; border-radius:10px 0px 0px 10px;" bgcolor="#ffffff" height="30">
+                                                                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                                <tr>
+                                                                                    <td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">
+                                                                                        <img src="https://miro.medium.com/max/480/1*UqgMgl_BvAyJvNb9eTy4Wg.png" title="source: medium.com" width="100" height="70" border="0" alt="grafana.logo" />
+                                                                                    </td>
+                                                                                    <td class="h3 pb20" style="color:#445942; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:24px; text-align:center; padding-bottom:5px;">
+                                                                                        Conozca los resultados de la prueba en el dashboard de Rendimiento.
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- Grafana -->
+                                        <!-- Jenkins -->
+                                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                            <tr>
+                                                <td style="padding-bottom: 10px;">
+                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
+                                                        <tr>
+                                                            <th class="column-dir" dir="ltr" width="245" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;background:#ffffff;border-radius:0px 10px 10px 0px">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <!-- Button -->
+                                                                    <tr>
+                                                                        <td align="center">
+                                                                            <table border="0" cellspacing="0" cellpadding="0">
+                                                                                <tr>
+                                                                                    <td class="text-button" style="background:#ded7d7; color:#ffffff; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:18px; padding:12px 30px; text-align:center; border-radius:22px;">
+                                                                                        <a href="${env.BUILD_URL}" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;">
+                                                                                            <span class="link-white" style="color:#080808; text-decoration:none;">
+                                                                                                <b>Ir a Jenkins</b>
+                                                                                            </span>
+                                                                                        </a>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <!-- END Button -->
+                                                                </table>
+                                                            </th>
+                                                            <th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
+                                                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                    <tr>
+                                                                        <td class="p30-15 brl" style="padding: 20px; border-radius:10px 0px 0px 10px;" bgcolor="#ffffff" height="50">
+                                                                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                                                <tr>
+                                                                                    <td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">
+                                                                                        <img src="https://i.imgur.com/5zc24YS.png" width="100" height="70" border="0" alt="" />
+                                                                                    </td>
+                                                                                    <td class="h3 pb20" style="color:#445942; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:24px; text-align:center; padding-bottom:20px;">
+                                                                                        Conozca el estado de la ejecuci&oacute;n en Jenkins.
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </th>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- Jenkins -->
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+        </html>
+    """
 
-										<!-- Jenkins -->
-										<table width="100%" border="0" cellspacing="0" cellpadding="0">
-											<tr>
-												<td style="padding-bottom: 10px;">
-													<table width="100%" border="0" cellspacing="0" cellpadding="0" dir="rtl" style="direction: rtl;">
-														<tr>
-															<th class="column-dir" dir="ltr" width="245" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;background:#ffffff;border-radius:0px 10px 10px 0px">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<!-- Button -->
-																	<tr>
-																		<td align="center">
-																			<table border="0" cellspacing="0" cellpadding="0">
-																				<tr>
-																					<td class="text-button" style="background:#ded7d7; color:#ffffff; font-family:'Poppins', Arial,sans-serif; font-size:14px; line-height:18px; padding:12px 30px; text-align:center; border-radius:22px;">
-																						<a href="${env.BUILD_URL}" target="_blank" class="link-white" style="color:#ffffff; text-decoration:none;">
-																							<span class="link-white" style="color:#080808; text-decoration:none;">
-																								<b>Ir a Jenkins</b>
-																							</span>
-																						</a>
-																					</td>
-																				</tr>
-																			</table>
-																		</td>
-																	</tr>
-																	<!-- END Button -->
-																</table>
-															</th>
-															<th class="column-dir" dir="ltr" style="font-size:0pt; line-height:0pt; padding:0; margin:0; font-weight:normal; direction:ltr;">
-																<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																	<tr>
-																		<td class="p30-15 brl" style="padding: 20px; border-radius:10px 0px 0px 10px;" bgcolor="#ffffff" height="50">
-																			<table width="100%" border="0" cellspacing="0" cellpadding="0">
-																				<tr>
-																					<td class="fluid-img mbr" style="font-size:0pt; line-height:0pt; text-align:center;">
-																						<img src="https://i.imgur.com/5zc24YS.png" width="100" height="70" border="0" alt="" />
-																					</td>
-																					<td class="h3 pb20" style="color:#445942; font-family:'Poppins', Arial,sans-serif; font-size:12px; line-height:24px; text-align:center; padding-bottom:20px;">
-																						Conozca el estado de la ejecuci&oacute;n en Jenkins.
-																					</td>
-																				</tr>																		
-																			</table>
-																		</td>
-																	</tr>
-																</table>
-															</th>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</table>
-										<!-- Jenkins -->								
-									</td>
-								</tr>
-							</table>
-						</td>
-					</tr>
-				</table>
-			</body>
-		</html>
-	"""
-
-	emailext(
-		subject: "${asunto}",
-		body: "${body}",
-		to: "${recibe}"
-	)
-}	
+    emailext(
+        subject: "${asunto}",
+        body: "${body}",
+        to: "${recibe}"
+    )
+}
